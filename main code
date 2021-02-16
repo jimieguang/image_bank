@@ -1,0 +1,67 @@
+#简单低效高质量地制作幻影坦克
+from PIL import Image
+import time
+
+start=time.time()
+image_f=Image.open('f.jpg')
+image_b=Image.open('b.jpg')
+#导出宽高信息
+w_f,h_f=image_f.size
+w_b,h_b=image_b.size
+#注意：jep图片的像素信息储存格式为RGB，缺少透明度的设置
+#所以需要新建一个RGBA格式的照片文件
+w_min=min(w_f,w_b)
+h_min=min(h_f,h_b)
+new_image=Image.new('RGBA',(w_min,h_min))#此处使用的是两者较大一方的参数
+#将图片转为黑白图片，简化计算
+image_f=image_f.convert('L')
+image_b=image_b.convert('L')
+#load()将图片的像素信息储存成array，提供位置坐标即可调出
+# 且速度优于open()
+array_f=image_f.load()
+array_b=image_b.load()
+#调整为同比例图片（计算宽高比例）
+scale_h_f=int(h_f/h_min)
+scale_w_f=int(w_f/w_min)
+scale_h_b=int(h_b/h_min)
+scale_w_b=int(w_b/w_min)
+#确定较小的比例为参照比例
+scale_f=min(scale_h_f,scale_w_f)
+scale_b=min(scale_h_b,scale_w_b)
+#使选中像素点居于原图片中央
+trans_f_x=int((w_f-w_min*scale_f)/2)
+trans_b_x=int((w_b-w_min*scale_b)/2)
+#设置修正参数
+#待选值有：10-6，10-7，11-5，11-6
+#均为实验所得 格式为a-b
+a=10
+b=6
+for i in range(0,w_min):
+    for j in range(0,h_min):
+        #注意：像素点位置是修正过的
+        mean_f=array_f[trans_f_x+i*scale_f,j*scale_f]
+        mean_b=array_b[trans_b_x+i*scale_b,j*scale_b]
+        #确定新建png图片像素信息
+        #修正值以保证A_new尽量在255以内
+        mean_f=mean_f*a/10
+        mean_b=mean_b*b/10
+        #注意：这里的A_new和mean_new是通过颜色混合关系解出来的方程结果
+        #原始结果为理想值，需要进行修正以满足实际需求，修正如上
+        A_new=int(255-mean_f+mean_b)
+        if A_new==0:
+            A_new=A_new
+            mean_new=0
+        elif A_new>=255:
+            A_new=255
+            mean_new=int((255*mean_b)/A_new)
+        else:
+            A_new=A_new
+            mean_new=int((255*mean_b)/A_new)
+        pixel_new=(mean_new,mean_new,mean_new,A_new)
+        #导入像素信息
+        new_image.putpixel((i,j),pixel_new) 
+#保存新图片 
+new_image.save('幻影坦克.png')
+#计算运行程序总时间
+end=time.time()
+print('running time:%ds'%(end-start))
